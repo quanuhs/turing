@@ -10,4 +10,4 @@
 
 
 
-[Жми! Специально для конкурса Selectel](https://turing.quanuhs.repl.co/%20(s%3E1e%3E2l%3E3e%3E4c%3E5t%3E6e%3E7l!0%20%3E0)e(%20!-%20!-%20!-%20!-%20!-%20!-%20!-%20!-%20%3C8)l(l!1l!2l!3l!8%20!-%20!-%20!-%20!-%20%3C8)s(%20!-%20!-%20!-%20!-%20!-%20!-%20!-%20!-%20%3C8)c(%20!-%20!-%20!-%20!-%20!-%20!-%20!-%20!-%20%3C8)t(%20!-%20!-%20!-%20!-%20!-%20!-%20!-%20!-%20%3C8))
+[Жми! Специально для конкурса Selectel](https://turing.quanuhs.repl.co/IChzPjFlPjJsPjNlPjRjPjV0PjZlPjdsITcpcyggIS0gIS0gIS0gIS0gIS0gIS0gIS0gITApZSggIS0gIS0gIS0gIS0gIS0gIS0gIS0gPDcpbCggIS0gIS0gIS0gIS0gIS0gIS0gIS0gPDcpYyggIS0gIS0gIS0gIS0gIS0gIS0gIS0gPDcpdCggIS0gIS0gIS0gIS0gIS0gIS0gIS0gPDcp)
