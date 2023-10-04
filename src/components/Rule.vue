@@ -11,7 +11,7 @@
         </select>
         <select class="select_state" v-model="props.rule.stage">
             <option :value="-1">⛔</option>
-            <option v-for="(stage, index) in stages" :value="index">{{stage}}</option>
+            <option v-for="index in stages" :key="index" :value="index-1">Q{{index}}</option>
             
         </select>
     </div>
@@ -44,7 +44,7 @@
 <style>
     select{
         aspect-ratio: 1/1;
-        width: 50px;
+        width: 60px;
         font-size: 100%;
         outline: 0;
         border: 0;

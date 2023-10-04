@@ -96,11 +96,22 @@
                 break
                 
             case "Delete":
+                if (event.target.value.length == 0){
+                    nextInputChar.focus()
+                    props.chars[index+1] = null
+                }else{
+                    props.chars[index] = null
+                }
+                break
+                
+                
             case "Backspace":
-                if (event.target.value.length == 0)
+                if (event.target.value.length == 0){
                     beforeInputChar.focus()
-
-                props.chars[index-1] = null
+                    props.chars[index-1] = null   
+                }else{
+                    props.chars[index] = null
+                }
                 break
             
         }

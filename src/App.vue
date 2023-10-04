@@ -4,11 +4,6 @@
     import CloseIcon from './components/icons/CloseIcon.vue'
     
     import { ref, reactive, onMounted, computed, watch, defineProps, nextTick } from 'vue'
-
-
-    const MOVE_LEFT = -1;
-    const MOVE_RIGHT = 1;
-    const MOVE_STAY = 0;
     
     class RuleClass {
         
@@ -18,32 +13,76 @@
             this.stage = stage
         }
 
-        get(){
-            return `${this.char}  ${this.move}  ${this.stage}`
+
+        same(char, move, stage){
+            return (this.char == char && this.move == move && this.stage == stage)
         }
+        
+        toString(){
+            let move_text = "!"
+            let stage_text = this.stage
+            
+            if (this.move > 0)
+                move_text = ">"
+            else
+                if (this.move < 0)
+                    move_text = "<"
+
+            if (this.stage == -1)
+                stage_text = "-"
+        
+            return `${this.char}${move_text}${stage_text}`
+        }
+
+        load(char, move, stage){
+            switch(move){
+                case ">":
+                    this.move = 1
+                    break
+
+                case "<":
+                    this.move = -1
+                    break
+
+                case "!":
+                    this.move = 0
+            }
+
+            if (stage == "-")
+                this.stage = -1
+            else
+                this.stage = parseInt(stage)
+            
+            this.char = char
+        }
+        
     }
 
     
 
+    const empty_char = " "
+    
     var length = ref(0);
     var input_length = ref(length.value);
     var chars = ref([]);
+    
     var remember_chars = []
-    var alphabet = ref(" ");
+    var alphabet = ref(empty_char);
     var pointer_index = ref(-1);
+    var last_rule = ref(null)
     var current_index = ref(pointer_index.value)
-    var stages = ref({})
-    var stage_id = 1
+    var stage_amount = ref(0)
     var rules = ref({})
 
     
     
     var step_number = 0
-    var current_stage = ref(1)
+    var current_stage = ref(0)
     
     var current_rule = computed(() => {
         return get_rule(chars.value[current_index.value], current_stage.value)
     })
+
 
     const line = ref(null)
 
@@ -96,43 +135,24 @@
     onMounted( () => {
         length.value = 100
 
+
         
         // Загружаем данные из ссылки
-        try{
         let hist = window.location.pathname.substring(1)
-        let remember = JSON.parse(atob(decodeURIComponent(escape(hist))))
+        let code = decodeURIComponent(escape(atob(hist)))
+        // let code = btoa(decodeURIComponent(escape(text)))
 
-        
-        for (let char in remember){
-            alphabet_input.value += char
-            
+        if (code.length > 0){
+            loadHistory(code)
         }
-        
-        saveAlphabet()
-
-        let is_first = true
-        for (let char in remember){
-            for (let stage in remember[char]){
-                if (is_first)
-                    addStage()
-
-                rules.value[char][stage].char = remember[char][stage].char
-                rules.value[char][stage].move = remember[char][stage].move
-                rules.value[char][stage].stage = remember[char][stage].stage
-                
-            }
-            
-            is_first = false
-            
-        }
-
-        // addStage()
-        }catch(e){
+        else{
             saveAlphabet()
             addStage()
         }
+        
 
-
+        
+        
         watch(current_index, async (newValue) => {
 
             if (follow_current.value){
@@ -145,6 +165,59 @@
         
     })
 
+
+    async function loadHistory(code){
+
+        const find_chars = /(.)\((.*?)\)/g
+        const find_rules = /(.)(<|>|!)(\d+|-)/g
+
+
+        let matches_chars = Array.from(code.matchAll(find_chars))
+        let first_time = true
+        for (let match of matches_chars){
+            let char = match[1]
+            let text = match[2]
+
+            alphabet_input.value += char
+            saveAlphabet()
+            
+            let matches_rules = Array.from(text.matchAll(find_rules))
+
+            let i = 0
+            for (let matched_rule of matches_rules){
+                if (first_time)
+                    addStage()
+                
+                let rule_char = matched_rule[1]
+                let rule_move = matched_rule[2]
+                let rule_stage = matched_rule[3]
+
+                rules.value[char][i].load(rule_char, rule_move, rule_stage)
+                i += 1
+                
+            }
+            first_time = false
+        }
+        
+    }
+
+
+
+    async function saveHistory(){
+        let text = ``
+        for (let char in rules.value){
+            text+=`${char}(`
+            for (let rule in rules.value[char]){
+                    text += `${rules.value[char][rule].toString()}`
+            }
+            text += ")"
+        }
+
+        text = btoa(unescape(encodeURIComponent(text)))
+        // text = unescape(encodeURIComponent(text))
+        window.history.replaceState(null, "test", text)
+    }
+
     async function reset(){
 
         if (step_number > 0){
@@ -153,51 +226,50 @@
         
         step_number = 0
         current_index.value = pointer_index.value
-        current_stage.value = 1
+        current_stage.value = 0
         auto_step.value = false
+    
     }
 
 
     async function addStage(){
-        stages.value[stage_id] = "Q"+(Object.keys(stages.value).length + 1)
+
+
+        stage_amount.value += 1
         
         for (let char in rules.value){
-            setupRule(char, stage_id)
+            setupRule(char, stage_amount.value)
         }
-
-        stage_id++;
+        
     }
 
     async function removeStage(stage){
         if (ask_before_delete.value)
-            if (!confirm("Вы точно хотите удалить состояние?"))
+            if (!confirm(`Вы точно хотите удалить состояние Q${stage+1}?`))
                 return
-        
-        delete stages.value[stage]
         
         for (let rule in rules.value){
             for (let _stage in rules.value[rule]){
-                if (rules.value[rule][_stage].stage == stage)
-                    rules.value[rule][_stage].stage = -1
+                if (rules.value[rule][_stage].stage > stage)
+                    rules.value[rule][_stage].stage -= 1
+                else
+                    if (rules.value[rule][_stage].stage == stage)
+                        rules.value[rule][_stage].stage = -1
             }
-            delete rules.value[rule][stage]
+            rules.value[rule].splice(stage, 1);
         }
 
-        let _temp_id = 1
-        for ( let stage in stages.value){
-            stages.value[stage] = "Q"+_temp_id
-            _temp_id++
-        }
-
+        stage_amount.value -= 1
+        console.log(rules.value)
     }
 
 
     async function addChar(){
         for (let char of alphabet.value){
             if (rules.value[char] == null){
-                rules.value[char] = {}
+                rules.value[char] = []
                 
-                for (let stage in stages.value){
+                for (let stage = 0; stage < stage_amount.value; stage++){
                     setupRule(char, stage)
                 }
             }
@@ -207,14 +279,12 @@
 
 
     watch(rules.value, () => {
-
-        let text = btoa(unescape(encodeURIComponent(JSON.stringify(rules.value))))
-        window.history.replaceState(null, "test", text) 
+        saveHistory()
     })
 
     function setupRule(char, stage) {
         
-        rules.value[char][stage] = reactive(new RuleClass(" ", 0, -1))
+        rules.value[char].push(reactive(new RuleClass(empty_char, 0, -1)))
         
     }
 
@@ -229,7 +299,7 @@
         let _temp = new Set(Array.from(alphabet.value + to_add.join("")))
         
         for (let r_char of to_remove){
-            if (r_char == " ")
+            if (r_char == empty_char)
                 continue
             
             for (let i = 0; i < length.value; i++){
@@ -243,7 +313,7 @@
         
         alphabet.value = Array.from(_temp).join("")
         alphabet_input.value = alphabet.value
-        alphabet_input.value = alphabet_input.value.replace(" ", "")
+        alphabet_input.value = alphabet_input.value.replace(empty_char, "")
 
         
         addChar()
@@ -269,8 +339,8 @@
             return
         }
 
-        if (0 < carret_index && carret_index <= length.value-1)
-            if (/^[1-9]\d*$/.test(carret_index)){
+        if (0 <= carret_index && carret_index <= length.value-1)
+            if (/^[0-9]\d*$/.test(carret_index)){
                 
                 pointer_index.value = parseInt(carret_index)
                 return
@@ -313,6 +383,9 @@
 
 
     function get_rule(char, stage) {
+        if (stage < 0)
+            return null
+        
         return get_char_rules(char)[stage]
         
     }
@@ -320,8 +393,8 @@
     function get_char_rules(char) {
         let char_rules = undefined
     
-        if (char === '' || char === null || char === ' ') {
-            char_rules = rules.value[" "]
+        if (char === '' || char === null || char === empty_char) {
+            char_rules = rules.value[empty_char]
         } else {
     
             char_rules = rules.value[char]
@@ -331,16 +404,11 @@
     }
 
 
-    async function beforeStep(){
-        current_index.value = pointer_index.value
-        current_stage.value = 1
-        remember_chars = JSON.parse(JSON.stringify(chars.value));
-    }
     
     async function step() {
         
         if (step_number == 0) {
-            beforeStep()
+            remember_chars = JSON.parse(JSON.stringify(chars.value));
         }
 
         let char = chars.value[current_index.value]
@@ -349,7 +417,8 @@
         
         if (char_rules === undefined)
             return 1
-    
+
+        
         let rule = char_rules[current_stage.value]
 
     
@@ -384,7 +453,7 @@
         <div class="head-menu">
                 <label>Длина ленты: {{length}}</label>
                 <label>Позиция каретки: {{current_index}}</label>
-                <label>Текущее состояние: <span v-if="current_stage > 0" style="color: orange">Q{{current_stage}}</span><span v-else style="color: red">стоп</span></label>
+                <label>Текущее состояние: <span v-if="current_stage >= 0" style="color: orange">Q{{current_stage + 1}}</span><span v-else style="color: red">стоп</span></label>
 
                 <div class="checkline">
                     <label for="ask_remove">Подтверждение удаления</label>
@@ -404,12 +473,12 @@
 
         <div class="">
 
-            <div v-if="current_stage > 0" class="button-group">
+            <div v-if="current_stage >= 0" class="button-group">
 
                 
-                <button @click="step()" :disabled="!(current_stage > 0)">Шаг</button>
-                <button v-if="auto_step" @click="auto_step = false;">Пауза</button>
-                <button :disabled="!(current_stage > 0)" v-else @click="auto_step = true; makeStep();">Автоматический шаг</button>
+                <button @click="step()">Шаг</button>
+                <button v-if="auto_step" @click="auto_step = false;">Остановить шаг</button>
+                <button v-else @click="auto_step = true; makeStep();">Автоматический шаг</button>
 
                 <div class="slider">
                     <label>Шагов в секунду</label>
@@ -429,7 +498,7 @@
                 <button @click="setAlphabet()">Изменить алфавит</button>
                     
                 <button @click="line.scrollToCurrent()">Выбрать каретку</button>
-                <button @click="reset()" :style= "[current_stage <= 0 ? 'color: red' : '']">Сбросить</button>
+                <button @click="reset()" :style= "[current_stage < 0 ? 'color: red' : '']">Сбросить</button>
 
             </div>
 
@@ -442,14 +511,14 @@
 
 <div role="region" aria-labelledby="caption" tabindex="0" class="table-rules">
   <table>
-    <caption id="caption">Правила
+    <caption id="caption" @click="console.log(rules)">Правила
     </caption>
     <thead>
       <tr>
         <th style="height: 100%;"></th>
-        <th v-for="(stage, index) in stages">
-            {{stage}}
-            <a @click.prevent="removeStage(index)" v-if="index > 1" class="stage-delete"><CloseIcon/></a>
+        <th v-for="index in stage_amount">
+            Q{{index}}
+            <a @click.prevent="removeStage(index-1)" v-if="index > 1" class="stage-delete"><CloseIcon/></a>
         
         </th>
         <th class="">
@@ -461,7 +530,7 @@
       <tr v-for="(value, _key) in rules">
         
         <th>{{_key}}</th>
-        <td NOWRAP v-for="rule in value" :class="{'selected-rule': rule==current_rule}"><Rule :allowed_chars="alphabet" :rule="rule" :stages="stages"></Rule></td>
+        <td NOWRAP v-for="rule in value" :class="{'selected-rule': rule==current_rule, 'last-rule': rule == last_rule}"><Rule :allowed_chars="alphabet" :rule="rule" :stages="stage_amount"></Rule></td>
         <td></td>
      </tr>
 
@@ -573,6 +642,12 @@
 
     }
 
+    .last-rule{
+        padding: 0;
+        border: 4px solid yellow;
+        box-sizing: border-box;
+    }
+
     .stage-delete{
         position: absolute;
         right: 0;
@@ -622,9 +697,10 @@
       position: sticky;
       top: 0;
       z-index: 1;
-      min-width: 50px;
+      min-width: 100px;
       max-width: 180px;
       height: 50px;
+      background-color: var(--color-background);
     }
     
     table td {
@@ -673,7 +749,8 @@
     }
 
     .table-rules{
-        padding-bottom: 50px;
+        padding-bottom: 10px;
+        margin-bottom: 70px;
     }
 
     .checkline{
