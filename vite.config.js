@@ -8,6 +8,7 @@ export default defineConfig({
   server: {
     host: true
   },
+  base: '/turing/',
   plugins: [vue()],
   resolve: {
     alias: {
